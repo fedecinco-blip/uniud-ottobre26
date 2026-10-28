@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ricostruisci la Sequenza - App Didattica Interattiva</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #f0fdf4;
+            user-select: none;
+        }
+
+        .font-dyslexic {
+            font-family: 'Fredoka', cursive, sans-serif !important;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+        }
+
+        .drop-zone {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #16a34a;
+            background-color: #dcfce7;
+            transform: scale(1.02);
+        }
+
+        .card-draggable {
+            touch-action: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            cursor: grab;
+        }
+
+        .card-draggable:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-selected {
+            ring: 4px;
+            ring-color: #2563eb;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Pulse animation for hints */
+        @keyframes hintPulse {
+            0%, 100% { transform: scale(1); border-color: #eab308; }
+            50% { transform: scale(1.03); border-color: #ca8a04; box-shadow: 0 0 15px rgba(234, 179, 8, 0.5); }
+        }
+
+        .hint-highlight {
+            animation: hintPulse 1.5s infinite;
+        }
+
+        /* Shake animation for incorrect answer */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl text-2xl">
+                    <i class="fa-solid fa-arrow-down-1-9"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-wide">Sequenze Temporal & Procedurali</h1>
+                    <p class="text-xs text-emerald-100 hidden sm:block">Laboratorio Interattivo TIC & Inclusione</p>
+                </div>
+            </div>
+
+            <!-- EXERCISE NAVIGATION TABS -->
+            <div class="flex items-center bg-emerald-700/60 p-1 rounded-xl gap-1">
+                <button id="tab-ex1" onclick="switchExercise('ex1')" 
+                    class="px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-white text-emerald-800 shadow">
+                    <i class="fa-solid fa-book-open text-red-500"></i>
+                    <span>1. Cappuccetto Rosso</span>
+                </button>
+                <button id="tab-ex2" onclick="switchExercise('ex2')" 
+                    class="px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 text-white hover:bg-emerald-600/50">
+                    <i class="fa-solid fa-hands-bubbles text-blue-300"></i>
+                    <span>2. Lavarsi le Mani</span>
+                </button>
+            </div>
+
+            <!-- UTILITY CONTROLS -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleDyslexicFont()" id="btn-font" title="Carattere alta leggibilità" 
+                    class="p-2.5 bg-emerald-700 hover:bg-emerald-800 rounded-xl text-xs font-bold flex items-center gap-1 border border-emerald-500/30">
+                    <i class="fa-solid fa-font"></i>
+                    <span class="hidden md:inline">Alta Leggibilità</span>
+                </button>
+                <button onclick="openTeacherModal()" title="Info Pedagogiche per Insegnanti" 
+                    class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                    <span class="hidden md:inline">Info Docente</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 md:p-6 flex flex-col gap-6">
+
+        <!-- CONTROL PANEL / SETTINGS BAR -->
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-emerald-100 flex flex-wrap items-center justify-between gap-4">
+            <!-- Difficulty Selector -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-xs uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                    <i class="fa-solid fa-sliders text-emerald-600"></i> Livello:
+                </span>
+                <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-medium">
+                    <button id="lvl-easy" onclick="setDifficulty('easy')" class="px-3 py-1.5 rounded-lg transition">
+                        <i class="fa-solid fa-seedling text-green-600 mr-1"></i> Base (Semplificato)
+                    </button>
+                    <button id="lvl-medium" onclick="setDifficulty('medium')" class="px-3 py-1.5 rounded-lg transition bg-white text-emerald-700 shadow">
+                        <i class="fa-solid fa-tree text-emerald-600 mr-1"></i> Intermedio
+                    </button>
+                    <button id="lvl-hard" onclick="setDifficulty('hard')" class="px-3 py-1.5 rounded-lg transition">
+                        <i class="fa-solid fa-mountain text-purple-600 mr-1"></i> Avanzato
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mode / Assist Toggles -->
+            <div class="flex items-center gap-3 flex-wrap text-xs">
+                <!-- Text / Image Mode Toggle -->
+                <label id="label-text-only" class="hidden items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 px-3 py-1.5 rounded-xl border border-purple-200 cursor-pointer font-medium">
+                    <input type="checkbox" id="chk-text-only" onchange="toggleTextOnlyMode(this.checked)" class="rounded text-purple-600">
+                    <i class="fa-solid fa-file-lines"></i> Solo Testo (Senza immagini)
+                </label>
+
+                <!-- Source Story Toggle (For Ex 1) -->
+                <label id="label-source-story" class="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-1.5 rounded-xl border border-blue-200 cursor-pointer font-medium">
+                    <input type="checkbox" id="chk-show-source" checked onchange="toggleSourceStory(this.checked)" class="rounded text-blue-600">
+                    <i class="fa-solid fa-eye"></i> Storia di riferimento
+                </label>
+
+                <!-- Audio Speed Selector -->
+                <div class="flex items-center gap-1 text-slate-600 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                    <i class="fa-solid fa-volume-high text-emerald-600"></i>
+                    <span class="text-[11px] font-semibold">Voce:</span>
+                    <button onclick="testAudio()" title="Ascolta audio di prova" class="text-xs hover:text-emerald-600 px-1">
+                        <i class="fa-solid fa-circle-play"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXERCISE HEADER & INSTRUCTIONS -->
+        <section class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 opacity-15 text-8xl pointer-events-none">
+                <i id="header-bg-icon" class="fa-solid fa-book-open"></i>
+            </div>
+            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <span id="ex-badge" class="px-2.5 py-1 bg-white/20 backdrop-blur-md text-white rounded-md text-xs font-bold uppercase tracking-wider">
+                        Esercizio 1 • Narrativo
+                    </span>
+                    <h2 id="ex-title" class="text-2xl md:text-3xl font-extrabold mt-1">
+                        La storia di Cappuccetto Rosso
+                    </h2>
+                    <p id="ex-instruction" class="text-emerald-50 mt-1 text-sm md:text-base max-w-2xl">
+                        Riconosci l'ordine temporale degli eventi! Trascina o seleziona le tessere e inseriscile nei riquadri numerati da sinistra a destra.
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="readInstructionText()" class="px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl font-semibold text-xs flex items-center gap-2 transition border border-white/30">
+                        <i class="fa-solid fa-volume-high text-amber-300 text-sm"></i>
+                        <span>Ascolta Istruzioni</span>
+                    </button>
+                    <button onclick="giveHint()" class="px-3 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span>Suggerimento</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- REFERENCE PANEL (VISUAL AID / STORY REFERENCE - CALIBRATION SUPPORT) -->
+        <section id="reference-panel" class="bg-amber-50/80 rounded-2xl p-4 border border-amber-200/80 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-bold text-amber-900 flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark text-amber-600"></i>
+                    <span>Fonte / Storia da consultare:</span>
+                </h3>
+                <span class="text-xs text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full font-medium">Guida per l'alunno</span>
+            </div>
+            <div id="reference-content" class="text-xs md:text-sm text-slate-700 leading-relaxed bg-white/80 p-3 rounded-xl border border-amber-100">
+                <!-- Dynamic Reference Content inserted here -->
+            </div>
+        </section>
+
+        <!-- MAIN WORKSPACE: SLOTS & DRAGGABLE CARDS -->
+        <div class="grid grid-cols-1 gap-6">
+
+            <!-- DROP SLOTS (TARGET SEQUENCE) -->
+            <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-emerald-600"></i>
+                        <span>Sequenza Ordinata (Trascina o clicca qui)</span>
+                    </h3>
+                    <span id="placed-counter" class="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                        0 / 5 Posizionate
+                    </span>
+                </div>
+
+                <!-- SLOTS CONTAINER -->
+                <div id="slots-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4 min-h-[160px]">
+                    <!-- Slots populated dynamically -->
+                </div>
+            </section>
+
+            <!-- INTRUDER ZONE (APPEARS IN ADVANCED MODE FOR EXERCISE 2) -->
+            <section id="intruder-zone" class="hidden bg-red-50/60 rounded-2xl p-4 border border-red-200">
+                <div class="flex items-center gap-2 text-red-800 text-sm font-bold mb-2">
+                    <i class="fa-solid fa-ban text-red-500"></i>
+                    <span>Cestino / Elementi Intruso (Scarta le tessere non necessarie):</span>
+                </div>
+                <div id="intruder-slot" class="drop-zone border-2 border-dashed border-red-300 rounded-xl p-3 min-h-[100px] flex items-center justify-center bg-white/80">
+                    <span class="text-xs text-red-400 font-medium italic">Trascina qui la tessera intrusa</span>
+                </div>
+            </section>
+
+            <!-- CARDS POOL (AVAILABLE UNORDERED TESSERE) -->
+            <section class="bg-slate-100/80 rounded-2xl p-5 border border-slate-200">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-grip text-amber-600"></i>
+                        <span>Tessere Scompaginate (Da ordinare)</span>
+                    </h3>
+                    <span class="text-xs text-slate-500">Fai clic su una tessera e poi sul riquadro desiderato</span>
+                </div>
+
+                <!-- POOL CONTAINER -->
+                <div id="cards-pool" class="flex flex-wrap items-center justify-center gap-3 min-h-[140px] p-2 bg-white/60 rounded-xl border border-dashed border-slate-300">
+                    <!-- Cards populated dynamically -->
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ACTION & FEEDBACK BAR -->
+        <section class="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-2">
+                <button onclick="resetCurrentExercise()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>Ricomincia</span>
+                </button>
+            </div>
+
+            <div id="feedback-message" class="hidden text-center text-sm font-bold px-4 py-2 rounded-xl transition">
+                <!-- Feedback text appears here -->
+            </div>
+
+            <button onclick="verifySolution()" id="btn-verify" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-base shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Verifica Risposta</span>
+            </button>
+        </section>
+
+    </main>
+
+    <!-- TEACHER / PEDAGOGICAL INFORMATION MODAL -->
+    <div id="teacher-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            <!-- Modal Header -->
+            <div class="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between sticky top-0 z-10">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-chalkboard-user text-2xl text-amber-300"></i>
+                    <div>
+                        <h3 class="text-xl font-bold">Guida Pedagogica & Quadro Didattico</h3>
+                        <p class="text-xs text-emerald-100">Documento di riferimento: ESERCIZIO TIC DE STEFANO</p>
+                    </div>
+                </div>
+                <button onclick="closeTeacherModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 space-y-6 text-sm text-slate-700">
+                
+                <!-- Section 1: Overview -->
+                <div class="border-b border-slate-200 pb-4">
+                    <h4 class="font-bold text-emerald-800 text-base mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-bullseye text-emerald-600"></i> Obiettivo Principale dell'Esercizio
+                    </h4>
+                    <p class="leading-relaxed bg-emerald-50 p-3 rounded-xl text-emerald-950">
+                        Sviluppare e verificare la capacità di ricostruire la sequenza temporale e logico-causale di una narrazione o procedura automatizzata della vita quotidiana (individuare il <em>prima</em>, il <em>durante</em> e il <em>dopo</em>).
+                    </p>
+                </div>
+
+                <!-- Section 2: Prerequisites -->
+                <div class="border-b border-slate-200 pb-4">
+                    <h4 class="font-bold text-slate-800 text-base mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-blue-600"></i> Prerequisiti Indispensabili dell'Alunno
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-slate-600">
+                        <li>Conoscenza dei concetti temporali di base (prima, dopo, infine).</li>
+                        <li>Capacità di decodifica di immagini/icone semplici e associazione causa-effetto.</li>
+                        <li>Capacità di lettura di brevi frasi o, in alternativa, uso dell'ascolto (Sintesi Vocale TTS per DSA).</li>
+                        <li>Coordinamento oculo-manuale, utilizzo del touch-screen, mouse o puntatore.</li>
+                        <li>Riconoscimento della serie numerica progressiva (1, 2, 3, 4, 5).</li>
+                    </ul>
+                </div>
+
+                <!-- Section 3: Executive Functions & Goals -->
+                <div class="border-b border-slate-200 pb-4">
+                    <h4 class="font-bold text-slate-800 text-base mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-brain text-purple-600"></i> Obiettivi Secondari e Funzioni Esecutive
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-purple-50 p-3 rounded-xl border border-purple-100">
+                            <span class="font-bold text-purple-900 block mb-1">Pianificazione Strategica</span>
+                            Punto di partenza guidato (es. individuare inizio/fine per poi collocare gli elementi centrali).
+                        </div>
+                        <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                            <span class="font-bold text-indigo-900 block mb-1">Memoria di Lavoro</span>
+                            Mantenere in memoria la trama/routine mentre si confrontano le tessere disponibili.
+                        </div>
+                        <div class="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                            <span class="font-bold text-amber-900 block mb-1">Inibizione dell'Impulsività</span>
+                            Analizzare tutti i passaggi prima di scegliere la prima azione senza tirare a indovinare.
+                        </div>
+                        <div class="bg-teal-50 p-3 rounded-xl border border-teal-100">
+                            <span class="font-bold text-teal-900 block mb-1">Generalizzazione & Lessico</span>
+                            Trasferimento della sequenza alla routine reale ed arricchimento del lessico d'azione.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Calibration Levels -->
+                <div>
+                    <h4 class="font-bold text-slate-800 text-base mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-amber-600"></i> Modalità di Calibrazione (Differenziazione)
+                    </h4>
+                    <div class="space-y-2 text-xs">
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <strong class="text-green-700">Livello Base (Semplificato):</strong> Riduzione a 3 tessere; prima e/o ultima tessera già posizionate; fonte della storia visibile a fianco.
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <strong class="text-blue-700">Livello Intermedio (Standard):</strong> 4-5 tessere complete con testo ed immagini, supporto audio sempre disponibile.
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <strong class="text-purple-700">Livello Avanzato (Complessificato):</strong> Aggiunta della tessera "intruso" da scartare; opzione modalità solo testo o esecuzione a memoria senza fonte consultabile.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 bg-slate-100 border-t border-slate-200 flex justify-end">
+                <button onclick="closeTeacherModal()" class="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition">
+                    Ho capito, chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DATA & LOGIC -->
+    <script>
+        /* ==========================================================================
+           DATA STRUCTURES FOR EXERCISES
+           ========================================================================== */
+
+        const EXERCISES = {
+            ex1: {
+                id: 'ex1',
+                title: 'La storia di Cappuccetto Rosso',
+                badge: 'Esercizio 1 • Sequenza Narrativa',
+                icon: 'fa-book-open',
+                instruction: 'Riconosci l\'ordine temporale degli eventi della fiaba! Trascina le tessere o clicca prima sulla tessera e poi sulla casella corretta.',
+                referenceText: `<strong>La storia in breve:</strong> 1) Cappuccetto Rosso parte dalla mamma con il cestino per andare dalla nonna. 2) Nel bosco incontra il lupo cattivo. 3) Il lupo corre alla casa della nonna e si nasconde nel letto. 4) Arriva Cappuccetto Rosso che trova il lupo travestito. 5) Infine il cacciatore salva Cappuccetto Rosso e la nonna!`,
+                cards: [
+                    {
+                        id: 'c1',
+                        stepOrder: 1,
+                        text: 'La mamma consegna a Cappuccetto Rosso il cestino per la nonna.',
+                        icon: 'fa-basket-shopping',
+                        color: 'from-amber-400 to-orange-500',
+                        badgeText: '1. Partenza'
+                    },
+                    {
+                        id: 'c2',
+                        stepOrder: 2,
+                        text: 'Cappuccetto Rosso cammina nel bosco e incontra il lupo.',
+                        icon: 'fa-tree',
+                        color: 'from-emerald-500 to-green-600',
+                        badgeText: '2. Incontro'
+                    },
+                    {
+                        id: 'c3',
+                        stepOrder: 3,
+                        text: 'Il lupo corre a casa della nonna e si infila nel suo letto.',
+                        icon: 'fa-bed',
+                        color: 'from-indigo-500 to-purple-600',
+                        badgeText: '3. Inganno'
+                    },
+                    {
+                        id: 'c4',
+                        stepOrder: 4,
+                        text: 'Cappuccetto Rosso arriva e trova il lupo travestito da nonna.',
+                        icon: 'fa-hospital-user',
+                        color: 'from-rose-400 to-red-500',
+                        badgeText: '4. Arrivo'
+                    },
+                    {
+                        id: 'c5',
+                        stepOrder: 5,
+                        text: 'Il buon cacciatore arriva e salva la nonna e Cappuccetto Rosso.',
+                        icon: 'fa-person-rifle',
+                        color: 'from-teal-500 to-emerald-600',
+                        badgeText: '5. Salvataggio'
+                    }
+                ]
+            },
+            ex2: {
+                id: 'ex2',
+                title: 'Igiene Personale: Lavarsi le Mani',
+                badge: 'Esercizio 2 • Procedura della Vita Quotidiana',
+                icon: 'fa-hands-bubbles',
+                instruction: 'Metti in ordine i passaggi operativi per lavare correttamente le mani! Attento alle tessere intruso nei livelli avanzati.',
+                referenceText: `<strong>Procedura corretta:</strong> 1) Bagnarsi le mani con l'acqua corrente del rubinetto. 2) Mettere il sapone sulle mani. 3) Strofinare bene palmi e dita, poi risciacquare. 4) Asciugare accuratamente le mani con l'asciugamano.`,
+                cards: [
+                    {
+                        id: 'h1',
+                        stepOrder: 1,
+                        text: 'Aprire il rubinetto e bagnare bene le mani con l\'acqua.',
+                        icon: 'fa-faucet-drip',
+                        color: 'from-sky-400 to-blue-500',
+                        badgeText: '1. Bagnare'
+                    },
+                    {
+                        id: 'h2',
+                        stepOrder: 2,
+                        text: 'Applicare una dose di sapone liquido sulle mani.',
+                        icon: 'fa-pump-soap',
+                        color: 'from-cyan-400 to-teal-500',
+                        badgeText: '2. Sapone'
+                    },
+                    {
+                        id: 'h3',
+                        stepOrder: 3,
+                        text: 'Strofinare le mani e risciacquare accuratamente con acqua.',
+                        icon: 'fa-hands-bubbles',
+                        color: 'from-blue-500 to-indigo-600',
+                        badgeText: '3. Strofinare e Risciacquare'
+                    },
+                    {
+                        id: 'h4',
+                        stepOrder: 4,
+                        text: 'Asciugare le mani con un asciugamano pulito o carta.',
+                        icon: 'fa-mattress-pillow',
+                        color: 'from-amber-400 to-yellow-500',
+                        badgeText: '4. Asciugare'
+                    }
+                ],
+                intruders: [
+                    {
+                        id: 'h_intruder1',
+                        stepOrder: -1, // Intruder code
+                        isIntruder: true,
+                        text: 'Infilare le scarpe da ginnastica prima di uscire.',
+                        icon: 'fa-shoe-prints',
+                        color: 'from-slate-500 to-slate-700',
+                        badgeText: 'Intruso!'
+                    }
+                ]
+            }
+        };
+
+        /* ==========================================================================
+           APPLICATION STATE
+           ========================================================================== */
+
+        let currentExerciseId = 'ex1';
+        let currentDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+        let textOnlyMode = false;
+        let showSourceStory = true;
+
+        // Current active cards & slot mappings
+        let activeCards = [];
+        let slotsState = {}; // { slotIndex: cardObject }
+        let intruderSlotState = null;
+        let selectedCard = null; // For click-to-select interaction
+
+        /* ==========================================================================
+           INITIALIZATION & SWITCHING
+           ========================================================================== */
+
+        window.onload = function() {
+            initExercise();
+            setupDragAndDropGlobal();
+        };
+
+        function switchExercise(exId) {
+            if (currentExerciseId === exId) return;
+
+            currentExerciseId = exId;
+            
+            // Update Tab Styling
+            const tab1 = document.getElementById('tab-ex1');
+            const tab2 = document.getElementById('tab-ex2');
+
+            if (exId === 'ex1') {
+                tab1.className = "px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-white text-emerald-800 shadow";
+                tab2.className = "px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 text-white hover:bg-emerald-600/50";
+                document.getElementById('header-bg-icon').className = "fa-solid fa-book-open";
+            } else {
+                tab2.className = "px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-white text-emerald-800 shadow";
+                tab1.className = "px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 text-white hover:bg-emerald-600/50";
+                document.getElementById('header-bg-icon').className = "fa-solid fa-hands-bubbles";
+            }
+
+            // Reset flags appropriately
+            selectedCard = null;
+            clearFeedback();
+            initExercise();
+        }
+
+        function setDifficulty(lvl) {
+            currentDifficulty = lvl;
+            
+            // Update Button Styles
+            ['easy', 'medium', 'hard'].forEach(l => {
+                const btn = document.getElementById(`lvl-${l}`);
+                if (l === lvl) {
+                    btn.className = "px-3 py-1.5 rounded-lg transition bg-white text-emerald-700 shadow font-bold";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+                }
+            });
+
+            // Adjust toggle visibility depending on level
+            const textOnlyLabel = document.getElementById('label-text-only');
+            if (lvl === 'hard') {
+                textOnlyLabel.classList.remove('hidden');
+                textOnlyLabel.classList.add('flex');
+            } else {
+                textOnlyLabel.classList.add('hidden');
+                textOnlyLabel.classList.remove('flex');
+                textOnlyMode = false;
+                document.getElementById('chk-text-only').checked = false;
+            }
+
+            initExercise();
+        }
+
+        function toggleDyslexicFont() {
+            document.body.classList.toggle('font-dyslexic');
+            const btn = document.getElementById('btn-font');
+            btn.classList.toggle('bg-amber-400');
+            btn.classList.toggle('text-slate-900');
+        }
+
+        function toggleTextOnlyMode(val) {
+            textOnlyMode = val;
+            renderCards();
+            renderSlots();
+        }
+
+        function toggleSourceStory(val) {
+            showSourceStory = val;
+            const refPanel = document.getElementById('reference-panel');
+            if (val) {
+                refPanel.classList.remove('hidden');
+            } else {
+                refPanel.classList.add('hidden');
+            }
+        }
+
+        /* ==========================================================================
+           EXERCISE LOGIC & RENDER
+           ========================================================================== */
+
+        function initExercise() {
+            const ex = EXERCISES[currentExerciseId];
+
+            // Update UI Labels
+            document.getElementById('ex-badge').innerText = ex.badge;
+            document.getElementById('ex-title').innerText = ex.title;
+            document.getElementById('ex-instruction').innerText = ex.instruction;
+            document.getElementById('reference-content').innerHTML = ex.referenceText;
+
+            // Handle Source Story initial visibility
+            toggleSourceStory(document.getElementById('chk-show-source').checked);
+
+            // Handle Intruder Zone visibility
+            const intruderZone = document.getElementById('intruder-zone');
+            if (currentExerciseId === 'ex2' && currentDifficulty === 'hard') {
+                intruderZone.classList.remove('hidden');
+            } else {
+                intruderZone.classList.add('hidden');
+            }
+
+            // Prepare Cards according to difficulty calibration
+            let baseCards = JSON.parse(JSON.stringify(ex.cards));
+
+            if (currentDifficulty === 'easy') {
+                // Easy: reduce to 3 steps
+                baseCards = baseCards.slice(0, 3);
+            } else if (currentDifficulty === 'hard' && ex.intruders && currentExerciseId === 'ex2') {
+                // Hard for exercise 2: add intruder card
+                baseCards = baseCards.concat(JSON.parse(JSON.stringify(ex.intruders)));
+            }
+
+            // Shuffle Cards for the pool
+            activeCards = shuffleArray([...baseCards]);
+            slotsState = {};
+            intruderSlotState = null;
+            selectedCard = null;
+
+            // Pre-place first card if in EASY mode (calibration feature)
+            if (currentDifficulty === 'easy' && activeCards.length > 0) {
+                const firstCardIndex = activeCards.findIndex(c => c.stepOrder === 1);
+                if (firstCardIndex !== -1) {
+                    const firstCard = activeCards.splice(firstCardIndex, 1)[0];
+                    slotsState[0] = firstCard;
+                }
+            }
+
+            clearFeedback();
+            renderSlots();
+            renderCards();
+            updatePlacedCounter();
+        }
+
+        function renderSlots() {
+            const container = document.getElementById('slots-container');
+            container.innerHTML = '';
+
+            const totalSlots = (currentDifficulty === 'easy') ? 3 : EXERCISES[currentExerciseId].cards.length;
+
+            for (let i = 0; i < totalSlots; i++) {
+                const slotCard = slotsState[i];
+
+                const slotEl = document.createElement('div');
+                slotEl.dataset.slotIndex = i;
+                slotEl.className = `drop-zone border-2 border-dashed rounded-2xl p-3 flex flex-col items-center justify-center min-h-[160px] relative transition ${
+                    slotCard ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-300 bg-white/70 hover:bg-slate-50'
+                }`;
+
+                // Drag and Drop Events
+                slotEl.addEventListener('dragover', handleDragOver);
+                slotEl.addEventListener('dragleave', handleDragLeave);
+                slotEl.addEventListener('drop', handleDropOnSlot);
+                slotEl.addEventListener('click', () => handleSlotClick(i));
+
+                // Slot Number Indicator
+                const numBadge = document.createElement('span');
+                numBadge.className = "absolute top-2 left-2 w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shadow-sm z-10";
+                numBadge.innerText = i + 1;
+                slotEl.appendChild(numBadge);
+
+                if (slotCard) {
+                    // Render card inside slot
+                    const cardMarkup = createCardElement(slotCard, true, i);
+                    slotEl.appendChild(cardMarkup);
+                } else {
+                    // Empty slot placeholder
+                    const placeholder = document.createElement('div');
+                    placeholder.className = "text-center text-slate-400 p-2 pointer-events-none";
+                    placeholder.innerHTML = `
+                        <i class="fa-solid fa-plus text-2xl mb-1 block"></i>
+                        <span class="text-xs font-medium">Posizione ${i + 1}</span>
+                    `;
+                    slotEl.appendChild(placeholder);
+                }
+
+                container.appendChild(slotEl);
+            }
+
+            // Setup intruder slot drop events if visible
+            const intruderSlot = document.getElementById('intruder-slot');
+            if (intruderSlot) {
+                intruderSlot.innerHTML = '';
+                if (intruderSlotState) {
+                    const cardMarkup = createCardElement(intruderSlotState, true, 'intruder');
+                    intruderSlot.appendChild(cardMarkup);
+                } else {
+                    intruderSlot.innerHTML = `<span class="text-xs text-red-400 font-medium italic pointer-events-none"><i class="fa-solid fa-trash-can mr-1"></i>Trascina o colloca qui la tessera intrusa</span>`;
+                }
+                intruderSlot.addEventListener('dragover', handleDragOver);
+                intruderSlot.addEventListener('dragleave', handleDragLeave);
+                intruderSlot.addEventListener('drop', handleDropOnIntruder);
+                intruderSlot.addEventListener('click', handleIntruderSlotClick);
+            }
+        }
+
+        function renderCards() {
+            const pool = document.getElementById('cards-pool');
+            pool.innerHTML = '';
+
+            if (activeCards.length === 0) {
+                pool.innerHTML = `<p class="text-xs text-slate-400 italic py-4">Tutte le tessere sono state posizionate!</p>`;
+                return;
+            }
+
+            activeCards.forEach(card => {
+                const cardEl = createCardElement(card, false);
+                pool.appendChild(cardEl);
+            });
+        }
+
+        function createCardElement(card, isInSlot = false, slotKey = null) {
+            const cardDiv = document.createElement('div');
+            cardDiv.draggable = true;
+            cardDiv.dataset.cardId = card.id;
+
+            const isSelected = selectedCard && selectedCard.id === card.id;
+
+            cardDiv.className = `card-draggable relative w-full rounded-xl p-3 shadow-sm border transition flex flex-col justify-between ${
+                isSelected ? 'card-selected ring-4 ring-blue-500 bg-blue-50 border-blue-400' : 'bg-white border-slate-200 hover:border-emerald-300'
+            }`;
+
+            // Drag Events
+            cardDiv.addEventListener('dragstart', (e) => handleDragStart(e, card, isInSlot, slotKey));
+            cardDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleCardClick(card, isInSlot, slotKey);
+            });
+
+            // Card Header (Icon & Audio Button)
+            const topBar = document.createElement('div');
+            topBar.className = "flex items-center justify-between gap-2 mb-2";
+
+            if (!textOnlyMode) {
+                const iconBox = document.createElement('div');
+                iconBox.className = `w-10 h-10 rounded-lg bg-gradient-to-br ${card.color} text-white flex items-center justify-center text-lg shadow-sm shrink-0`;
+                iconBox.innerHTML = `<i class="fa-solid ${card.icon}"></i>`;
+                topBar.appendChild(iconBox);
+            } else {
+                const textBadge = document.createElement('span');
+                textBadge.className = "text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded";
+                textBadge.innerText = "Tessera";
+                topBar.appendChild(textBadge);
+            }
+
+            // Audio Button
+            const audioBtn = document.createElement('button');
+            audioBtn.type = "button";
+            audioBtn.title = "Ascolta descrizione";
+            audioBtn.className = "p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition text-xs";
+            audioBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
+            audioBtn.onclick = (e) => {
+                e.stopPropagation();
+                speakText(card.text);
+            };
+            topBar.appendChild(audioBtn);
+
+            cardDiv.appendChild(topBar);
+
+            // Text Content
+            const textEl = document.createElement('p');
+            textEl.className = "text-xs font-medium text-slate-700 leading-snug mb-2 flex-1";
+            textEl.innerText = card.text;
+            cardDiv.appendChild(textEl);
+
+            // Remove Button if inside slot
+            if (isInSlot) {
+                const removeBtn = document.createElement('button');
+                removeBtn.className = "text-[11px] font-semibold text-rose-600 hover:text-rose-800 self-end mt-1 flex items-center gap-1";
+                removeBtn.innerHTML = `<i class="fa-solid fa-xmark"></i> Rimuovi`;
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    removeCardFromSlot(slotKey);
+                };
+                cardDiv.appendChild(removeBtn);
+            }
+
+            return cardDiv;
+        }
+
+        /* ==========================================================================
+           DRAG & DROP + CLICK-TO-SELECT INTERACTION HANDLERS
+           ========================================================================== */
+
+        let draggedData = null;
+
+        function handleDragStart(e, card, isInSlot, slotKey) {
+            draggedData = { card, isInSlot, slotKey };
+            e.dataTransfer.setData('text/plain', JSON.stringify({ cardId: card.id }));
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDropOnSlot(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+
+            const targetSlotIndex = parseInt(e.currentTarget.dataset.slotIndex);
+            if (isNaN(targetSlotIndex)) return;
+
+            if (draggedData) {
+                placeCardInSlot(draggedData.card, targetSlotIndex, draggedData.isInSlot, draggedData.slotKey);
+                draggedData = null;
+            }
+        }
+
+        function handleDropOnIntruder(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+
+            if (draggedData) {
+                placeCardInIntruder(draggedData.card, draggedData.isInSlot, draggedData.slotKey);
+                draggedData = null;
+            }
+        }
+
+        function setupDragAndDropGlobal() {
+            document.addEventListener('dragover', (e) => e.preventDefault());
+        }
+
+        // CLICK TO SELECT HANDLERS (Ideal for touch screen / LIM)
+        function handleCardClick(card, isInSlot, slotKey) {
+            if (selectedCard && selectedCard.id === card.id) {
+                // Deselect
+                selectedCard = null;
+            } else {
+                selectedCard = { card, isInSlot, slotKey };
+                speakText(card.text);
+            }
+            renderCards();
+            renderSlots();
+        }
+
+        function handleSlotClick(slotIndex) {
+            if (selectedCard) {
+                placeCardInSlot(selectedCard.card, slotIndex, selectedCard.isInSlot, selectedCard.slotKey);
+                selectedCard = null;
+                renderCards();
+                renderSlots();
+            }
+        }
+
+        function handleIntruderSlotClick() {
+            if (selectedCard) {
+                placeCardInIntruder(selectedCard.card, selectedCard.isInSlot, selectedCard.slotKey);
+                selectedCard = null;
+                renderCards();
+                renderSlots();
+            }
+        }
+
+        /* ==========================================================================
+           SLOT MANAGEMENT HELPERS
+           ========================================================================== */
+
+        function placeCardInSlot(card, targetSlotIndex, fromSlot = false, sourceSlotKey = null) {
+            // Check if slot already has a card
+            const existingCardInSlot = slotsState[targetSlotIndex];
+
+            if (fromSlot) {
+                if (sourceSlotKey === 'intruder') {
+                    intruderSlotState = existingCardInSlot || null;
+                } else if (sourceSlotKey !== null && sourceSlotKey !== targetSlotIndex) {
+                    slotsState[sourceSlotKey] = existingCardInSlot || null;
+                }
+            } else {
+                // Remove card from active pool
+                activeCards = activeCards.filter(c => c.id !== card.id);
+                if (existingCardInSlot) {
+                    activeCards.push(existingCardInSlot);
+                }
+            }
+
+            slotsState[targetSlotIndex] = card;
+            updatePlacedCounter();
+            renderCards();
+            renderSlots();
+            clearFeedback();
+        }
+
+        function placeCardInIntruder(card, fromSlot = false, sourceSlotKey = null) {
+            const existingIntruder = intruderSlotState;
+
+            if (fromSlot) {
+                if (sourceSlotKey !== null && sourceSlotKey !== 'intruder') {
+                    slotsState[sourceSlotKey] = existingIntruder || null;
+                }
+            } else {
+                activeCards = activeCards.filter(c => c.id !== card.id);
+                if (existingIntruder) {
+                    activeCards.push(existingIntruder);
+                }
+            }
+
+            intruderSlotState = card;
+            updatePlacedCounter();
+            renderCards();
+            renderSlots();
+            clearFeedback();
+        }
+
+        function removeCardFromSlot(slotKey) {
+            let cardToRemove = null;
+
+            if (slotKey === 'intruder') {
+                cardToRemove = intruderSlotState;
+                intruderSlotState = null;
+            } else {
+                cardToRemove = slotsState[slotKey];
+                delete slotsState[slotKey];
+            }
+
+            if (cardToRemove) {
+                activeCards.push(cardToRemove);
+            }
+
+            updatePlacedCounter();
+            renderCards();
+            renderSlots();
+            clearFeedback();
+        }
+
+        function updatePlacedCounter() {
+            const totalSlots = (currentDifficulty === 'easy') ? 3 : EXERCISES[currentExerciseId].cards.length;
+            const count = Object.keys(slotsState).length;
+            document.getElementById('placed-counter').innerText = `${count} / ${totalSlots} Posizionate`;
+        }
+
+        /* ==========================================================================
+           VERIFICATION & FEEDBACK
+           ========================================================================== */
+
+        function verifySolution() {
+            const totalSlots = (currentDifficulty === 'easy') ? 3 : EXERCISES[currentExerciseId].cards.length;
+            const placedCount = Object.keys(slotsState).length;
+
+            if (placedCount < totalSlots) {
+                showFeedback("Posiziona tutte le tessere nelle caselle ordinate prima di verificare!", "amber");
+                speakText("Incolla tutte le tessere prima di verificare!");
+                return;
+            }
+
+            let isCorrect = true;
+
+            // Verify order
+            for (let i = 0; i < totalSlots; i++) {
+                const card = slotsState[i];
+                if (!card || card.stepOrder !== (i + 1)) {
+                    isCorrect = false;
+                    break;
+                }
+            }
+
+            // Verify intruder if in hard mode for exercise 2
+            if (currentExerciseId === 'ex2' && currentDifficulty === 'hard') {
+                if (!intruderSlotState || !intruderSlotState.isIntruder) {
+                    isCorrect = false;
+                }
+            }
+
+            if (isCorrect) {
+                showFeedback("Eccellente! Hai ordinato correttamente la sequenza!", "emerald");
+                speakText("Bravissimo! Hai completato la sequenza in modo corretto!");
+                triggerSuccessConfetti();
+            } else {
+                showFeedback("Ci sono degli errori nell'ordine. Riprova o chiedi un suggerimento!", "rose");
+                speakText("Ci sono ancora degli errori. Controlla bene l'ordine delle tessere!");
+                shakeWorkspace();
+            }
+        }
+
+        function giveHint() {
+            const totalSlots = (currentDifficulty === 'easy') ? 3 : EXERCISES[currentExerciseId].cards.length;
+
+            // Find first incorrect slot
+            for (let i = 0; i < totalSlots; i++) {
+                const currentSlotCard = slotsState[i];
+                const expectedStep = i + 1;
+
+                if (!currentSlotCard || currentSlotCard.stepOrder !== expectedStep) {
+                    showFeedback(`Suggerimento: Alla posizione ${i + 1} serve l'azione che avviene per ${i === 0 ? 'prima' : (i === totalSlots - 1 ? 'ultima' : 'prossima')}.`, "blue");
+                    
+                    // Highlight the slot visually
+                    const slots = document.querySelectorAll('#slots-container > div');
+                    if (slots[i]) {
+                        slots[i].classList.add('hint-highlight');
+                        setTimeout(() => slots[i].classList.remove('hint-highlight'), 3000);
+                    }
+                    speakText(`Suggerimento per la posizione ${i + 1}`);
+                    return;
+                }
+            }
+
+            // If intruder error
+            if (currentExerciseId === 'ex2' && currentDifficulty === 'hard' && (!intruderSlotState || !intruderSlotState.isIntruder)) {
+                showFeedback("Suggerimento: Ricorda di scartare la tessera intrusa nel cestino rosso!", "blue");
+                speakText("Ricorda di spostare la tessera intrusa nel cestino!");
+            }
+        }
+
+        function resetCurrentExercise() {
+            initExercise();
+            showFeedback("Esercizio riazzerato.", "slate");
+        }
+
+        function showFeedback(msg, colorType) {
+            const fb = document.getElementById('feedback-message');
+            fb.innerText = msg;
+            fb.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-800', 'bg-rose-100', 'text-rose-800', 'bg-amber-100', 'text-amber-800', 'bg-blue-100', 'text-blue-800', 'bg-slate-100', 'text-slate-800');
+
+            if (colorType === 'emerald') {
+                fb.classList.add('bg-emerald-100', 'text-emerald-800');
+            } else if (colorType === 'rose') {
+                fb.classList.add('bg-rose-100', 'text-rose-800');
+            } else if (colorType === 'amber') {
+                fb.classList.add('bg-amber-100', 'text-amber-800');
+            } else if (colorType === 'blue') {
+                fb.classList.add('bg-blue-100', 'text-blue-800');
+            } else {
+                fb.classList.add('bg-slate-100', 'text-slate-800');
+            }
+        }
+
+        function clearFeedback() {
+            const fb = document.getElementById('feedback-message');
+            fb.classList.add('hidden');
+        }
+
+        function shakeWorkspace() {
+            const container = document.getElementById('slots-container');
+            container.classList.add('animate-shake');
+            setTimeout(() => container.classList.remove('animate-shake'), 600);
+        }
+
+        function triggerSuccessConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        /* ==========================================================================
+           SPEECH SYNTHESIS (AUDIO TTS FOR DSA ACCESSIBILITY)
+           ========================================================================== */
+
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) return;
+
+            window.speechSynthesis.cancel(); // Stop any active audio
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'it-IT';
+            utterance.rate = 0.9; // Slightly calmer pace for children
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function readInstructionText() {
+            const inst = document.getElementById('ex-instruction').innerText;
+            speakText(inst);
+        }
+
+        function testAudio() {
+            speakText("Audio attivo e funzionante!");
+        }
+
+        /* ==========================================================================
+           TEACHER MODAL LOGIC
+           ========================================================================== */
+
+        function openTeacherModal() {
+            document.getElementById('teacher-modal').classList.remove('hidden');
+        }
+
+        function closeTeacherModal() {
+            document.getElementById('teacher-modal').classList.add('hidden');
+        }
+
+        /* ==========================================================================
+           UTILITY FUNCTIONS
+           ========================================================================== */
+
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+    </script>
+</body>
+</html>
