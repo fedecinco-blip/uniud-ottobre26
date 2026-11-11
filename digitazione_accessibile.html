@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DigiTasto - Tastiera Facile ed Esercizi di Digitazione</title>
+  
+  <!-- Tailwind CSS per layout responsive e moderno -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome per Icone Intuitive -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Tone.js per effetti audio sintetizzati (nessuna risorsa esterna necessaria) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+  <!-- Google Fonts ad alta leggibilità -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Open+Dyslexic&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Lexend', 'sans-serif'],
+            dyslexic: ['"Open Dyslexic"', 'sans-serif']
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Classi di personalizzazione accessibilità */
+    .font-opendyslexic {
+      font-family: 'Open Dyslexic', sans-serif !important;
+    }
+    
+    /* Animazione impulso visivo per tasto attivo */
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .animate-pulse-subtle {
+      animation: pulse-subtle 2s infinite ease-in-out;
+    }
+
+    /* Stili specifici per la STAMPA del report */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-section, #print-section * {
+        visibility: visible;
+      }
+      #print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        box-shadow: none !important;
+        background: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Personalizzazione focus ad alto contrasto per ipovedenti/BES */
+    input:focus, button:focus {
+      outline: 4px solid #f59e0b !important;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col justify-between transition-all duration-200">
+
+  <!-- INTESTAZIONE APPLICAZIONE -->
+  <header class="bg-white border-b-4 border-sky-500 shadow-sm p-4 no-print">
+    <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-sky-500 text-white p-3 rounded-2xl shadow-md text-2xl">
+          <i class="fa-solid fa-keyboard"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-sky-800 tracking-tight">DigiTasto</h1>
+          <p class="text-sm font-medium text-slate-500">Imparare a digitare sorridendo</p>
+        </div>
+      </div>
+
+      <!-- STRUMENTI ACCESSIBILITÀ VELOCI -->
+      <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+        <button id="btn-dyslexic-toggle" onclick="toggleDyslexicFont()" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-xs sm:text-sm shadow-sm hover:bg-sky-50 text-slate-700 flex items-center gap-1.5" title="Attiva/Disattiva Font Alta Leggibilità DSA">
+          <i class="fa-solid fa-font"></i> Font DSA
+        </button>
+        <button id="btn-audio-toggle" onclick="toggleAudio()" class="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-xs sm:text-sm shadow-sm hover:bg-emerald-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-volume-high" id="audio-icon"></i> Audio ON
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENITORE PRINCIPALE MULTI-SCHERMATA -->
+  <main class="max-w-5xl w-full mx-auto p-4 sm:p-6 flex-grow">
+
+    <!-- SCHERMATA 1: FORM INIZIALE & CONFIGURAZIONE DOCENTE -->
+    <section id="screen-setup" class="space-y-6">
+      
+      <!-- Card Dati Alunno -->
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
+        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <span class="bg-amber-100 text-amber-700 w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl">1</span>
+          <h2 class="text-2xl font-bold text-slate-800">Dati Alunno / Alunna</h2>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <label for="student-name" class="block font-bold text-slate-700 mb-2 text-lg">Nome <span class="text-red-500">*</span></label>
+            <input type="text" id="student-name" placeholder="Es. Marco" class="w-full text-lg p-3.5 border-2 border-slate-300 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all font-medium">
+          </div>
+          <div>
+            <label for="student-surname" class="block font-bold text-slate-700 mb-2 text-lg">Cognome <span class="text-red-500">*</span></label>
+            <input type="text" id="student-surname" placeholder="Es. Rossi" class="w-full text-lg p-3.5 border-2 border-slate-300 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all font-medium">
+          </div>
+          <div>
+            <label for="student-class" class="block font-bold text-slate-700 mb-2 text-lg">Classe <span class="text-red-500">*</span></label>
+            <input type="text" id="student-class" placeholder="Es. 2A Scuola Media" class="w-full text-lg p-3.5 border-2 border-slate-300 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all font-medium">
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Configurazione Insegnante -->
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <span class="bg-indigo-100 text-indigo-700 w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl">2</span>
+            <h2 class="text-2xl font-bold text-slate-800">Impostazioni Esercizio (Insegnante)</h2>
+          </div>
+          <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-semibold border border-slate-200"><i class="fa-solid fa-sliders"></i> Opzionale</span>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Timer Personalizzato -->
+          <div>
+            <label for="timer-minutes" class="block font-bold text-slate-700 mb-2 text-lg">
+              <i class="fa-regular fa-clock text-indigo-600 mr-1"></i> Durata Timer (Minuti):
+            </label>
+            <div class="flex items-center gap-4">
+              <input type="number" id="timer-minutes" min="1" max="60" value="10" class="w-32 text-xl font-bold text-center p-3 border-2 border-slate-300 rounded-xl focus:border-indigo-500">
+              <span class="text-slate-500 font-medium">(Default: 10 minuti)</span>
+            </div>
+          </div>
+
+          <!-- Selezione Lista Parole -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-2 text-lg">
+              <i class="fa-solid fa-list-check text-indigo-600 mr-1"></i> Scegli Livello o Vocabolario:
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <button type="button" onclick="selectPresetWords('easy')" class="preset-btn bg-sky-50 border-2 border-sky-300 text-sky-800 p-3 rounded-xl font-bold text-left hover:bg-sky-100 focus:bg-sky-200 transition-all flex items-center justify-between">
+                <span><i class="fa-solid fa-star text-amber-400"></i> Facile (Parole brevi)</span>
+                <i class="fa-solid fa-check text-sky-600"></i>
+              </button>
+              <button type="button" onclick="selectPresetWords('medium')" class="preset-btn bg-slate-50 border-2 border-slate-200 text-slate-700 p-3 rounded-xl font-bold text-left hover:bg-slate-100 transition-all flex items-center justify-between">
+                <span><i class="fa-solid fa-book"></i> Medio (Frequenti)</span>
+              </button>
+              <button type="button" onclick="selectPresetWords('school')" class="preset-btn bg-slate-50 border-2 border-slate-200 text-slate-700 p-3 rounded-xl font-bold text-left hover:bg-slate-100 transition-all flex items-center justify-between">
+                <span><i class="fa-solid fa-graduation-cap"></i> Materie Scolastiche</span>
+              </button>
+            </div>
+
+            <!-- Inserimento Parole Personalizzate -->
+            <label for="custom-words" class="block font-semibold text-slate-600 mb-1 text-sm">Oppure inserisci parole personalizzate (separate da virgola):</label>
+            <textarea id="custom-words" rows="3" class="w-full p-3 border-2 border-slate-300 rounded-xl text-slate-800 font-mono text-sm focus:border-indigo-500" placeholder="casa, libro, scuola, computer, amicizia..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botton Avvio Esercizio -->
+      <div class="text-center pt-4">
+        <button onclick="startExercise()" class="w-full sm:w-auto px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3 mx-auto border-b-4 border-emerald-700">
+          <i class="fa-solid fa-play"></i> INIZIA L'ESERCIZIO
+        </button>
+      </div>
+    </section>
+
+    <!-- SCHERMATA 2: GIOCO DI DIGITAZIONE IN CORSO -->
+    <section id="screen-game" class="hidden space-y-6">
+      
+      <!-- BARRA SUPERIORE INFO: ALUNNO, TIMER & PULSANTI CONTROLLO -->
+      <div class="bg-white rounded-2xl p-4 shadow-md border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+        <!-- Info Studente -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-sky-100 text-sky-700 rounded-full flex items-center justify-center font-bold">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div>
+            <p id="display-student-info" class="font-bold text-slate-800 text-lg sm:text-xl">Studente</p>
+            <p id="display-student-class" class="text-xs font-semibold text-slate-500">Classe</p>
+          </div>
+        </div>
+
+        <!-- Timer ben visibile -->
+        <div class="bg-amber-50 border-2 border-amber-300 text-amber-900 px-6 py-2 rounded-2xl flex items-center gap-3 shadow-inner">
+          <i class="fa-solid fa-hourglass-half text-2xl text-amber-600 animate-pulse"></i>
+          <div>
+            <span class="text-xs font-extrabold tracking-wider uppercase block text-amber-700">Tempo Rimanente</span>
+            <span id="timer-display" class="font-extrabold text-2xl sm:text-3xl font-mono">10:00</span>
+          </div>
+        </div>
+
+        <!-- Controlli Esercizio -->
+        <div class="flex items-center gap-2">
+          <button id="btn-pause" onclick="togglePause()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold rounded-xl text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-pause"></i> <span class="hidden sm:inline">Pausa</span>
+          </button>
+          <button onclick="confirmFinishGame()" class="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl shadow flex items-center gap-2">
+            <i class="fa-solid fa-flag-checkered"></i> <span>Concludi</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CARD CENTRALE DIGITAZIONE -->
+      <div class="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border-2 border-sky-100 text-center space-y-8 relative overflow-hidden">
+        
+        <!-- Indicatore Parola Proposta con Lettura Sintesi Vocale -->
+        <div class="space-y-3">
+          <div class="flex justify-center items-center gap-3">
+            <span class="text-slate-400 font-medium text-sm sm:text-base uppercase tracking-widest">Digitare il vocabolo:</span>
+            <button onclick="speakCurrentWord()" class="bg-sky-100 hover:bg-sky-200 text-sky-700 p-2 rounded-full transition-transform active:scale-95" title="Ascolta la pronuncia della parola">
+              <i class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+          </div>
+
+          <!-- Parola da digitare (con evidenziazione lettere) -->
+          <div id="word-to-type" class="text-4xl sm:text-6xl font-black tracking-wider text-slate-800 py-4 min-h-[90px] flex justify-center items-center flex-wrap gap-1">
+            <!-- Inserito dinamicamente tramite JS -->
+          </div>
+        </div>
+
+        <!-- Campo Input Digitazione -->
+        <div class="max-w-xl mx-auto space-y-3">
+          <input type="text" id="typing-input" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" 
+                 class="w-full text-3xl sm:text-4xl font-bold text-center p-4 border-4 border-sky-400 rounded-2xl shadow-inner focus:border-amber-400 bg-sky-50/30 text-slate-800 transition-all" 
+                 placeholder="Scrivi qui la parola..." autofocus>
+          <p class="text-slate-400 text-sm font-medium">Premi il tasto <kbd class="px-2 py-1 bg-slate-200 text-slate-700 rounded font-semibold text-xs border border-slate-300">Spazio</kbd> o <kbd class="px-2 py-1 bg-slate-200 text-slate-700 rounded font-semibold text-xs border border-slate-300">Invio</kbd> per passare alla parola successiva</p>
+        </div>
+
+        <!-- STATISTICHE IN TEMPO REALE -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-100">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-bold uppercase">Parole Giuste</p>
+            <p id="stat-correct" class="text-2xl font-black text-emerald-600">0</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-bold uppercase">Errori</p>
+            <p id="stat-errors" class="text-2xl font-black text-rose-500">0</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-bold uppercase">Precisione</p>
+            <p id="stat-accuracy" class="text-2xl font-black text-sky-600">100%</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <p class="text-xs text-slate-500 font-bold uppercase">Velocità (WPM)</p>
+            <p id="stat-wpm" class="text-2xl font-black text-indigo-600">0</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SCHERMATA 3: REPORT FINALE DELL'ATTIVITÀ (PRONTO ALLA STAMPA) -->
+    <section id="screen-report" class="hidden space-y-6">
+      
+      <!-- CARD REPORT -->
+      <div id="print-section" class="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-200 space-y-8">
+        
+        <!-- Intestazione del Report -->
+        <div class="flex justify-between items-start border-b-2 border-slate-200 pb-6">
+          <div>
+            <div class="flex items-center gap-2 text-sky-600 font-bold text-lg mb-1">
+              <i class="fa-solid fa-award"></i> Scheda di Monitoraggio Attività
+            </div>
+            <h2 class="text-3xl font-extrabold text-slate-900">Report Digitazione Alunno</h2>
+          </div>
+          <div class="text-right text-sm text-slate-500">
+            <p class="font-bold text-slate-700" id="report-date">Data: --/--/----</p>
+            <p id="report-time">Ora: --:--</p>
+          </div>
+        </div>
+
+        <!-- Dati dell'Alunno -->
+        <div class="bg-sky-50/60 p-5 rounded-2xl border border-sky-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <span class="text-xs uppercase font-bold text-sky-700">Nome e Cognome</span>
+            <p id="report-student-fullname" class="text-xl font-extrabold text-slate-800">--</p>
+          </div>
+          <div>
+            <span class="text-xs uppercase font-bold text-sky-700">Classe</span>
+            <p id="report-student-class" class="text-xl font-extrabold text-slate-800">--</p>
+          </div>
+          <div>
+            <span class="text-xs uppercase font-bold text-sky-700">Durata Sessione</span>
+            <p id="report-duration" class="text-xl font-extrabold text-slate-800">-- minuti</p>
+          </div>
+        </div>
+
+        <!-- Sintesi Statistiche -->
+        <div>
+          <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-sky-500"></i> Risultati Complessivi
+          </h3>
+          
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+              <p class="text-xs font-bold text-slate-500 uppercase mb-1">Parole Totali Digitate</p>
+              <p id="report-total-words" class="text-3xl font-black text-slate-800">0</p>
+            </div>
+            <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+              <p class="text-xs font-bold text-emerald-700 uppercase mb-1">Parole Corrette</p>
+              <p id="report-correct-words" class="text-3xl font-black text-emerald-600">0</p>
+            </div>
+            <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-center">
+              <p class="text-xs font-bold text-rose-700 uppercase mb-1">Errori Commessi</p>
+              <p id="report-error-words" class="text-3xl font-black text-rose-600">0</p>
+            </div>
+            <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl text-center">
+              <p class="text-xs font-bold text-indigo-700 uppercase mb-1">Precisione Finale</p>
+              <p id="report-accuracy" class="text-3xl font-black text-indigo-600">0%</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cronologia Vocaboli Digitati -->
+        <div>
+          <h3 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-list text-sky-500"></i> Dettaglio Vocaboli Proposti
+          </h3>
+          <div class="border border-slate-200 rounded-2xl overflow-hidden">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                <tr>
+                  <th class="p-3">#</th>
+                  <th class="p-3">Parola Proposta</th>
+                  <th class="p-3">Digitata dall'Alunno</th>
+                  <th class="p-3 text-center">Esito</th>
+                </tr>
+              </thead>
+              <tbody id="report-words-list" class="divide-y divide-slate-100 font-medium">
+                <!-- Inserite dinamicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Spazio per Note Insegnante (Utilissimo nella stampa) -->
+        <div class="pt-4 border-t border-slate-200">
+          <label class="block text-sm font-bold text-slate-700 mb-2">Note ed Osservazioni dell'Insegnante:</label>
+          <div class="w-full min-h-[80px] p-3 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 text-slate-400 text-sm">
+            Spazio riservato per note pedagogiche o valutative del docente...
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOTTONI AZIONE REPORT (NASCOSTI IN STAMPA) -->
+      <div class="flex flex-wrap justify-center gap-4 no-print pt-4">
+        <button onclick="window.print()" class="px-8 py-4 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-lg rounded-2xl shadow-lg flex items-center gap-3 transition-all">
+          <i class="fa-solid fa-print"></i> Stampa Report / Salva PDF
+        </button>
+        <button onclick="restartSetup()" class="px-8 py-4 bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-lg rounded-2xl shadow-lg flex items-center gap-3 transition-all">
+          <i class="fa-solid fa-arrow-rotate-left"></i> Nuova Sessione
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print mt-auto">
+    <p>DigiTasto &bull; Strumento didattico accessibile per la scuola secondaria di primo grado</p>
+  </footer>
+
+  <!-- MODALE MESSAGGIO AVVISO / CONFERMA -->
+  <div id="custom-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+      <div id="modal-icon" class="text-4xl text-amber-500">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 id="modal-title" class="text-2xl font-bold text-slate-800">Attenzione</h3>
+      <p id="modal-body" class="text-slate-600 font-medium">Messaggio di prova</p>
+      <div id="modal-actions" class="flex justify-center gap-3 pt-2">
+        <!-- Generato via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGICA JAVASCRIPT APPLICAZIONE -->
+  <script>
+    /* ===================================================================
+       LISTE DI PAROLE PREIMPOSTATE (Accessibili per scuola media)
+       =================================================================== */
+    const PRESET_WORDS = {
+      easy: [
+        "casa", "pane", "sole", "mare", "lago", "palla", "gatto", "cane", "rosa", "luce",
+        "libro", "sedia", "tavolo", "albero", "fiore", "terra", "acqua", "fuoco", "mano", "viso"
+      ],
+      medium: [
+        "quaderno", "finestra", "matita", "zaino", "famiglia", "amico", "giardino", "musica",
+        "strada", "orologio", "telefono", "scuola", "maestra", "ragazzo", "viaggio", "sorriso"
+      ],
+      school: [
+        "geografia", "storia", "italiano", "matematica", "scienze", "tecnologia", "inglese",
+        "scultura", "pittura", "equazione", "vulcano", "universo", "pianeta", "repubblica", "costituzione"
+      ]
+    };
+
+    /* ===================================================================
+       STATO DELL'APPLICAZIONE
+       =================================================================== */
+    let state = {
+      student: { name: "", surname: "", class: "" },
+      timerDurationMinutes: 10,
+      wordList: [],
+      currentWordIndex: 0,
+      startTime: null,
+      timerInterval: null,
+      secondsRemaining: 600,
+      isPaused: false,
+      audioEnabled: true,
+      dyslexicFont: false,
+      // Statistiche sessione
+      history: [] // Array di { target: string, typed: string, isCorrect: boolean }
+    };
+
+    /* Synth Tone.js per effetti sonori gradevoli */
+    let synth = null;
+    function initAudio() {
+      try {
+        if (!synth) {
+          synth = new Tone.Synth().toDestination();
+          synth.volume.value = -6; // Volume delicato
+        }
+      } catch (e) {
+        console.log("Tone.js non inizializzato", e);
+      }
+    }
+
+    function playToneSound(type) {
+      if (!state.audioEnabled) return;
+      try {
+        initAudio();
+        if (type === 'success') {
+          synth.triggerAttackRelease("C5", "8n");
+        } else if (type === 'error') {
+          synth.triggerAttackRelease("G3", "8n");
+        } else if (type === 'finish') {
+          synth.triggerAttackRelease("E5", "4n");
+        }
+      } catch (e) {
+        // Fallback silenzioso
+      }
+    }
+
+    /* ===================================================================
+       GESTIONE SCHERMATE E NAVIGAZIONE
+       =================================================================== */
+    function showScreen(screenId) {
+      document.getElementById('screen-setup').classList.add('hidden');
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('screen-report').classList.add('hidden');
+
+      document.getElementById(screenId).classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    /* Selection Preset */
+    function selectPresetWords(presetKey) {
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-50', 'border-sky-300', 'text-sky-800');
+        btn.classList.add('bg-slate-50', 'border-slate-200', 'text-slate-700');
+        const checkIcon = btn.querySelector('.fa-check');
+        if (checkIcon) checkIcon.remove();
+      });
+
+      const activeBtn = event.currentTarget;
+      activeBtn.classList.remove('bg-slate-50', 'border-slate-200', 'text-slate-700');
+      activeBtn.classList.add('bg-sky-50', 'border-sky-300', 'text-sky-800');
+      activeBtn.insertAdjacentHTML('beforeend', '<i class="fa-solid fa-check text-sky-600"></i>');
+
+      // Pulisce la textarea personalizzata
+      document.getElementById('custom-words').value = "";
+      state.selectedPreset = presetKey;
+    }
+
+    /* ===================================================================
+       AVVIO ESERCIZIO GIOCO
+       =================================================================== */
+    function startExercise() {
+      const name = document.getElementById('student-name').value.trim();
+      const surname = document.getElementById('student-surname').value.trim();
+      const studentClass = document.getElementById('student-class').value.trim();
+      const timerInput = parseInt(document.getElementById('timer-minutes').value) || 10;
+      const customWordsInput = document.getElementById('custom-words').value.trim();
+
+      // Validazione Dati
+      if (!name || !surname || !studentClass) {
+        showModal('Attenzione', 'Per favore, inserisci tutti i dati dell\'alunno (Nome, Cognome e Classe).', 'warning');
+        return;
+      }
+
+      state.student = { name, surname, class: studentClass };
+      state.timerDurationMinutes = timerInput;
+      state.secondsRemaining = timerInput * 60;
+
+      // Determinazione Lista Parole
+      if (customWordsInput.length > 0) {
+        state.wordList = customWordsInput
+          .split(',')
+          .map(w => w.trim().toLowerCase())
+          .filter(w => w.length > 0);
+      } else {
+        const presetKey = state.selectedPreset || 'easy';
+        state.wordList = [...PRESET_WORDS[presetKey]];
+      }
+
+      // Mezcla casulae lista parole
+      state.wordList.sort(() => Math.random() - 0.5);
+
+      if (state.wordList.length === 0) {
+        showModal('Attenzione', 'Inserisci almeno un vocabolo per l\'esercizio.', 'warning');
+        return;
+      }
+
+      // Reset Stato Gioco
+      state.currentWordIndex = 0;
+      state.history = [];
+      state.isPaused = false;
+      state.startTime = new Date();
+
+      // Aggiorna Grafica Game
+      document.getElementById('display-student-info').innerText = `${state.student.name} ${state.student.surname}`;
+      document.getElementById('display-student-class').innerText = `Classe: ${state.student.class}`;
+
+      showScreen('screen-game');
+      startTimer();
+      renderCurrentWord();
+      
+      const inputEl = document.getElementById('typing-input');
+      inputEl.value = '';
+      inputEl.focus();
+
+      // Event Listeners per Input
+      inputEl.oninput = handleTypingInput;
+      inputEl.onkeydown = handleKeyDown;
+    }
+
+    /* ===================================================================
+       LOGICA DI DIGITAZIONE E FEEDBACK VISIVO
+       =================================================================== */
+    function renderCurrentWord() {
+      const currentWord = state.wordList[state.currentWordIndex % state.wordList.length];
+      const typedValue = document.getElementById('typing-input').value.toLowerCase();
+      const container = document.getElementById('word-to-type');
+      
+      container.innerHTML = '';
+
+      // Genera ogni lettera con feedback di colore in tempo reale
+      for (let i = 0; i < currentWord.length; i++) {
+        const charSpan = document.createElement('span');
+        charSpan.classList.add('px-1', 'py-0.5', 'rounded', 'transition-colors', 'duration-150');
+        charSpan.innerText = currentWord[i];
+
+        if (i < typedValue.length) {
+          if (typedValue[i] === currentWord[i]) {
+            // Lettera corretta
+            charSpan.classList.add('bg-emerald-100', 'text-emerald-700', 'border-b-4', 'border-emerald-500');
+          } else {
+            // Lettera errata
+            charSpan.classList.add('bg-rose-100', 'text-rose-700', 'underline', 'decoration-rose-500', 'decoration-4');
+          }
+        } else if (i === typedValue.length) {
+          // Carattere corrente da digitare (cursore visivo)
+          charSpan.classList.add('bg-sky-200', 'text-sky-900', 'animate-pulse');
+        } else {
+          // Carattere futuro
+          charSpan.classList.add('text-slate-700');
+        }
+
+        container.appendChild(charSpan);
+      }
+    }
+
+    function handleTypingInput() {
+      if (state.isPaused) return;
+      renderCurrentWord();
+    }
+
+    function handleKeyDown(e) {
+      if (state.isPaused) return;
+
+      // Spazio o Invio per confermare la parola
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        submitCurrentWord();
+      }
+    }
+
+    function submitCurrentWord() {
+      const inputEl = document.getElementById('typing-input');
+      const typed = inputEl.value.trim().toLowerCase();
+      const target = state.wordList[state.currentWordIndex % state.wordList.length];
+
+      if (typed.length === 0) return; // Ignora invii vuoti
+
+      const isCorrect = (typed === target);
+
+      // Salva nella cronologia
+      state.history.push({
+        target: target,
+        typed: typed,
+        isCorrect: isCorrect
+      });
+
+      // Feedback Audio
+      if (isCorrect) {
+        playToneSound('success');
+      } else {
+        playToneSound('error');
+      }
+
+      // Avanza Parola
+      state.currentWordIndex++;
+      inputEl.value = '';
+      
+      // Aggiorna Statistiche
+      updateRealtimeStats();
+      renderCurrentWord();
+    }
+
+    /* Sintesi Vocale (Text-To-Speech) */
+    function speakCurrentWord() {
+      const target = state.wordList[state.currentWordIndex % state.wordList.length];
+      if ('speechSynthesis' in window && target) {
+        window.speechSynthesis.cancel(); // Stop eventuali sintesi precedenti
+        const utterance = new SpeechSynthesisUtterance(target);
+        utterance.lang = 'it-IT';
+        utterance.rate = 0.85; // Velocità leggermente ridotta per chiarezza BES
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    /* ===================================================================
+       STATISTICHE E TIMER
+       =================================================================== */
+    function updateRealtimeStats() {
+      const total = state.history.length;
+      const correct = state.history.filter(h => h.isCorrect).length;
+      const errors = total - correct;
+      const accuracy = total > 0 ? Math.round((correct / total) * 100) : 100;
+
+      // Calcolo WPM (Parole Al Minuto)
+      const elapsedMinutes = (new Date() - state.startTime) / 60000;
+      const wpm = elapsedMinutes > 0 ? Math.round(correct / elapsedMinutes) : 0;
+
+      document.getElementById('stat-correct').innerText = correct;
+      document.getElementById('stat-errors').innerText = errors;
+      document.getElementById('stat-accuracy').innerText = `${accuracy}%`;
+      document.getElementById('stat-wpm').innerText = wpm;
+    }
+
+    function startTimer() {
+      clearInterval(state.timerInterval);
+      updateTimerDisplay();
+
+      state.timerInterval = setInterval(() => {
+        if (!state.isPaused) {
+          state.secondsRemaining--;
+          updateTimerDisplay();
+
+          if (state.secondsRemaining <= 0) {
+            clearInterval(state.timerInterval);
+            playToneSound('finish');
+            showModal('Tempo Scaduto!', 'L\'esercizio è terminato. Generazione del report in corso...', 'info', () => {
+              finishGame();
+            });
+          }
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(state.secondsRemaining / 60);
+      const secs = state.secondsRemaining % 60;
+      document.getElementById('timer-display').innerText = 
+        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function togglePause() {
+      state.isPaused = !state.isPaused;
+      const btn = document.getElementById('btn-pause');
+      if (state.isPaused) {
+        btn.innerHTML = `<i class="fa-solid fa-play"></i> <span class="hidden sm:inline">Riprendi</span>`;
+        btn.classList.add('bg-amber-100', 'text-amber-800');
+      } else {
+        btn.innerHTML = `<i class="fa-solid fa-pause"></i> <span class="hidden sm:inline">Pausa</span>`;
+        btn.classList.remove('bg-amber-100', 'text-amber-800');
+        document.getElementById('typing-input').focus();
+      }
+    }
+
+    function confirmFinishGame() {
+      showModal(
+        'Concludere Esercizio?',
+        'Sei sicuro di voler terminare ora l\'esercizio e visualizzare il report finale?',
+        'confirm',
+        () => finishGame()
+      );
+    }
+
+    /* ===================================================================
+       GENERAZIONE REPORT FINALE
+       =================================================================== */
+    function finishGame() {
+      clearInterval(state.timerInterval);
+
+      // Se l'utente ha digitato qualcosa nel campo ma non ha inviato, consideralo
+      const inputVal = document.getElementById('typing-input').value.trim();
+      if (inputVal.length > 0) {
+        submitCurrentWord();
+      }
+
+      const now = new Date();
+      document.getElementById('report-date').innerText = `Data: ${now.toLocaleDateString('it-IT')}`;
+      document.getElementById('report-time').innerText = `Ora: ${now.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}`;
+
+      // Dati Studente
+      document.getElementById('report-student-fullname').innerText = `${state.student.name} ${state.student.surname}`;
+      document.getElementById('report-student-class').innerText = state.student.class;
+
+      // Durata Effettiva
+      const elapsedSeconds = (state.timerDurationMinutes * 60) - state.secondsRemaining;
+      const elapsedMins = Math.max(1, Math.round(elapsedSeconds / 60));
+      document.getElementById('report-duration').innerText = `${elapsedMins} minuti`;
+
+      // Statistiche
+      const totalWords = state.history.length;
+      const correctWords = state.history.filter(h => h.isCorrect).length;
+      const errorWords = totalWords - correctWords;
+      const accuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
+
+      document.getElementById('report-total-words').innerText = totalWords;
+      document.getElementById('report-correct-words').innerText = correctWords;
+      document.getElementById('report-error-words').innerText = errorWords;
+      document.getElementById('report-accuracy').innerText = `${accuracy}%`;
+
+      // Tabella Cronologia Vocaboli
+      const tableBody = document.getElementById('report-words-list');
+      tableBody.innerHTML = '';
+
+      if (totalWords === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun vocabolo digitato durante la sessione.</td></tr>`;
+      } else {
+        state.history.forEach((item, index) => {
+          const row = document.createElement('tr');
+          row.classList.add(index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50');
+          
+          row.innerHTML = `
+            <td class="p-3 text-slate-400 font-bold">${index + 1}</td>
+            <td class="p-3 font-bold text-slate-800">${item.target}</td>
+            <td class="p-3 font-mono ${item.isCorrect ? 'text-emerald-700' : 'text-rose-600 line-through'}">${item.typed}</td>
+            <td class="p-3 text-center">
+              ${item.isCorrect 
+                ? '<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold"><i class="fa-solid fa-check"></i> Corretto</span>' 
+                : '<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold"><i class="fa-solid fa-xmark"></i> Errore</span>'}
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      showScreen('screen-report');
+    }
+
+    function restartSetup() {
+      showScreen('screen-setup');
+    }
+
+    /* ===================================================================
+       OPZIONI ACCESSIBILITÀ (FONT & AUDIO)
+       =================================================================== */
+    function toggleDyslexicFont() {
+      state.dyslexicFont = !state.dyslexicFont;
+      const btn = document.getElementById('btn-dyslexic-toggle');
+      if (state.dyslexicFont) {
+        document.body.classList.add('font-opendyslexic');
+        btn.classList.add('bg-sky-200', 'border-sky-400', 'text-sky-900');
+      } else {
+        document.body.classList.remove('font-opendyslexic');
+        btn.classList.remove('bg-sky-200', 'border-sky-400', 'text-sky-900');
+      }
+    }
+
+    function toggleAudio() {
+      state.audioEnabled = !state.audioEnabled;
+      const btn = document.getElementById('btn-audio-toggle');
+      const icon = document.getElementById('audio-icon');
+      
+      if (state.audioEnabled) {
+        btn.className = "px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-xs sm:text-sm shadow-sm flex items-center gap-1.5";
+        btn.innerHTML = `<i class="fa-solid fa-volume-high"></i> Audio ON`;
+      } else {
+        btn.className = "px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 border border-slate-300 font-semibold text-xs sm:text-sm shadow-sm flex items-center gap-1.5";
+        btn.innerHTML = `<i class="fa-solid fa-volume-xmark"></i> Audio OFF`;
+      }
+    }
+
+    /* ===================================================================
+       MODALE PERSONALIZZATO (NO ALERT)
+       =================================================================== */
+    function showModal(title, bodyText, type = 'info', onConfirm = null) {
+      const modal = document.getElementById('custom-modal');
+      const titleEl = document.getElementById('modal-title');
+      const bodyEl = document.getElementById('modal-body');
+      const iconEl = document.getElementById('modal-icon');
+      const actionsEl = document.getElementById('modal-actions');
+
+      titleEl.innerText = title;
+      bodyEl.innerText = bodyText;
+      actionsEl.innerHTML = '';
+
+      if (type === 'warning') {
+        iconEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500"></i>`;
+      } else if (type === 'confirm') {
+        iconEl.innerHTML = `<i class="fa-solid fa-circle-question text-sky-500"></i>`;
+      } else {
+        iconEl.innerHTML = `<i class="fa-solid fa-circle-info text-emerald-500"></i>`;
+      }
+
+      if (type === 'confirm') {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = "px-5 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300";
+        cancelBtn.innerText = "Annulla";
+        cancelBtn.onclick = closeModal;
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = "px-5 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 shadow";
+        confirmBtn.innerText = "Conferma";
+        confirmBtn.onclick = () => {
+          closeModal();
+          if (onConfirm) onConfirm();
+        };
+
+        actionsEl.appendChild(cancelBtn);
+        actionsEl.appendChild(confirmBtn);
+      } else {
+        const okBtn = document.createElement('button');
+        okBtn.className = "px-6 py-2.5 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 shadow";
+        okBtn.innerText = "OK";
+        okBtn.onclick = () => {
+          closeModal();
+          if (onConfirm) onConfirm();
+        };
+        actionsEl.appendChild(okBtn);
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('custom-modal').classList.add('hidden');
+    }
+
+    // Inizializzazione automatica
+    window.onload = function() {
+      // Imposta preset facile di default
+      selectPresetWords('easy');
+    };
+  </script>
+</body>
+</html>
